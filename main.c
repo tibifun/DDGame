@@ -26,15 +26,13 @@ typedef struct {
     int id;
 } Monstro;
 
-
 // Estrutura para passar argumentos para a thread do jogador
 typedef struct {
     Jogador *jogador;
-    Monstro *monstro;
+    Monstro *monstros;
     Sala *localAventura;
     int numMonstros;
 } ThreadArgs;
-
 
 // Funções para inicialização
 void inicializarJogador(Jogador *jogador) {
@@ -72,12 +70,12 @@ void inicializarMonstro(Monstro *monstros, int numMonstros) {
 void *movimentarMonstro(void *args) {
     ThreadArgs *threadArgs = (ThreadArgs *)args;
     Sala *localAventura = threadArgs->localAventura;
-    Monstro *monstros = threadArgs->monstro;
+    Monstro *monstros = threadArgs->monstros;
     int numMonstros = threadArgs->numMonstros;
 
     // Enquanto pelo menos um monstro estiver vivo
     while (1) {
-        int monstroVivo = 1; // Flag para verificar se pelo menos um monstro está vivo
+        int monstroVivo = 0; // Flag para verificar se pelo menos um monstro está vivo
 
         for (int i = 0; i < numMonstros; ++i) {
             // Verificar se o monstro está vivo
@@ -121,7 +119,6 @@ void *movimentarMonstro(void *args) {
     return NULL;
 }
 
-
 void descreverMonstro(Monstro monstro) {
     printf("Monstro %d | Energia: %d\n", monstro.id, monstro.energia);
 }
@@ -138,10 +135,10 @@ void aceitarComando(Jogador *jogador, Sala *localAventura) {
     switch (comando) {
         case 'n': jogador->local = localAventura[jogador->local].norte;
             printf("%s movimentou-se para norte\n", jogador->nome);
-        break;
+            break;
         case 's': jogador->local = localAventura[jogador->local].sul;
             printf("%s  movimentou-se para sul\n", jogador->nome );
-        break;
+            break;
         case 'e': jogador->local = localAventura[jogador->local].este;
             printf("%s  movimentou-se para este\n", jogador->nome);
             break;
@@ -151,14 +148,13 @@ void aceitarComando(Jogador *jogador, Sala *localAventura) {
     }
 }
 
-
 void lutar(Jogador *jogador, Monstro *monstro) {
     printf("Luta! %s vs Monstro %d\n", jogador->nome, monstro->id);
 
-    //a lógica de luta aqui, por exemplo, subtrair energia dos dois participantes
-
+    // Lógica de luta aqui, por exemplo, subtrair energia dos dois participantes
     jogador->energia -= 10;
-    monstro->energia -=10;
+    monstro->energia -= 10;
+
     descreverMonstro(*monstro);
 }
 
@@ -166,23 +162,30 @@ void *threadFunc(void *args) {
     ThreadArgs *threadArgs = (ThreadArgs *)args;
     Jogador *jogador = threadArgs->jogador;
     Sala *localAventura = threadArgs->localAventura;
-    Monstro *monstro = threadArgs->monstro;
+    Monstro *monstros = threadArgs->monstros;
     int numMonstros = threadArgs->numMonstros;
-    while (jogador->energia > 0) {
 
-            for (int i = 0; i < numMonstros; ++i) {
-                //se o monstro morrer sai do thread para terminar
-                if (monstro[i].energia <= 0) {
-                pthread_exit(NULL);
-                }
-            }
+    while (jogador->energia > 0) {
         descreverLocalizacao(*jogador, localAventura);
         aceitarComando(jogador, localAventura);
 
-        if (jogador->local == monstro->local) {
-            lutar(jogador, monstro);
+        for (int i = 0; i < numMonstros; ++i) {
+            // Se o monstro morrer, continue para o próximo
+            if (monstros[i].energia <= 0) {
+                continue;
+            }
+
+            if (jogador->local == monstros[i].local) {
+                lutar(jogador, &monstros[i]);
+            }
+
+            // Após a luta, verifique novamente se o jogador morreu
+            if (jogador->energia <= 0) {
+                pthread_exit(NULL);
+            }
         }
     }
+
     return NULL;
 }
 
@@ -191,32 +194,32 @@ int main() {
     const int numMonstros = 3;
     const int numSalas = 10;
     Jogador jogador;
-    Monstro monstro;
+    Monstro monstros[numMonstros];
     Sala localAventura[numSalas];
 
     inicializarJogador(&jogador);
     inicializarLocalAventura(localAventura, numSalas);
-    inicializarMonstro(&monstro, numMonstros);
+    inicializarMonstro(monstros, numMonstros);
 
     // Estrutura para armazenar argumentos da thread do jogador
-    ThreadArgs threadMovimentoJogador = { .jogador = &jogador, .localAventura = localAventura, .monstro = &monstro };
-    ThreadArgs threadMovimentoMonstro = { .localAventura = localAventura, .monstro = &monstro, .numMonstros = numMonstros };
+    ThreadArgs threadMovimentoJogador = {.jogador = &jogador, .localAventura = localAventura, .monstros = monstros, .numMonstros = numMonstros};
+    ThreadArgs threadMovimentoMonstro = {.localAventura = localAventura, .monstros = monstros, .numMonstros = numMonstros};
 
-        pthread_create(&playerThread, NULL, threadFunc, (void*)&threadMovimentoJogador);
+    pthread_create(&playerThread, NULL, threadFunc, (void *) &threadMovimentoJogador);
+    pthread_create(&monsterThread, NULL, movimentarMonstro, (void *) &threadMovimentoMonstro);
 
-        pthread_create(&monsterThread, NULL, movimentarMonstro, (void*) &threadMovimentoMonstro);
-
-
-    //Esperar o thread acabar
+    // Esperar o thread do jogador acabar
     pthread_join(playerThread, NULL);
+
+    // Aguardar o término do thread dos monstros
     pthread_join(monsterThread, NULL);
+
     // Apresentar resultado final
-
-    if (jogador.energia <= 0) {printf("Você perdeu! Sua vida chegou a zero.\n");}
-
-    else {printf("Parabéns, derrotou o monstro e venceu o jogo!\n");}
-
+    if (jogador.energia <= 0) {
+        printf("Você perdeu! Sua vida chegou a zero.\n");
+    } else {
+        printf("Parabéns, derrotou os monstros e venceu o jogo!\n");
+    }
 
     return 0;
-
 }
