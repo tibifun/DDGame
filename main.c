@@ -152,43 +152,37 @@ void aceitarComando(Jogador *jogador, Sala *localAventura) {
 }
 
 
-void lutar(Jogador *jogador, Monstro *monstros, int monstroID) {
-    printf("Luta! %s vs Monstro %d\n", jogador->nome, monstroID);
+void lutar(Jogador *jogador, Monstro *monstro) {
+    printf("Luta! %s vs Monstro %d\n", jogador->nome, monstro->id);
 
-    // Lógica de luta aqui, por exemplo, subtrair energia dos dois participantes
+    //a lógica de luta aqui, por exemplo, subtrair energia dos dois participantes
+
     jogador->energia -= 10;
-    monstros[monstroID].energia -= 10; // Subtrai a energia do monstro correto
-
-    descreverMonstro(monstros[monstroID]);
+    monstro->energia -=10;
+    descreverMonstro(*monstro);
 }
 
-// Função da thread principal
 void *threadFunc(void *args) {
     ThreadArgs *threadArgs = (ThreadArgs *)args;
     Jogador *jogador = threadArgs->jogador;
     Sala *localAventura = threadArgs->localAventura;
-    Monstro *monstros = threadArgs->monstro;
+    Monstro *monstro = threadArgs->monstro;
     int numMonstros = threadArgs->numMonstros;
-
     while (jogador->energia > 0) {
-        // Se um monstro morreu, atualizar o estado do jogador
-        for (int i = 0; i < numMonstros; ++i) {
-            if (monstros[i].energia <= 0) {
-                printf("Monstro %d morreu!\n", monstros[i].id);
-            }
-        }
 
+            for (int i = 0; i < numMonstros; ++i) {
+                //se o monstro morrer sai do thread para terminar
+                if (monstro[i].energia <= 0) {
+                pthread_exit(NULL);
+                }
+            }
         descreverLocalizacao(*jogador, localAventura);
         aceitarComando(jogador, localAventura);
 
-        // Verificar se há luta
-        for (int i = 0; i < numMonstros; ++i) {
-            if (jogador->local == monstros[i].local && monstros[i].energia > 0) {
-                lutar(jogador, monstros, monstros[i].id);
-            }
+        if (jogador->local == monstro->local) {
+            lutar(jogador, monstro);
         }
     }
-
     return NULL;
 }
 
@@ -216,7 +210,7 @@ int main() {
     //Esperar o thread acabar
     pthread_join(playerThread, NULL);
     pthread_join(monsterThread, NULL);
-    // Apresentar resultado
+    // Apresentar resultado final
 
     if (jogador.energia <= 0) {printf("Você perdeu! Sua vida chegou a zero.\n");}
 
