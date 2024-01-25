@@ -88,11 +88,17 @@ void imprimirMapa(int mapa[LINHAS][COLUNAS]){
         printf("\n");
     }
 }
-
-void inicializarMapa(int mapa[LINHAS][COLUNAS]){
-    for (int i = 0; i < LINHAS; ++i) {
-        for (int j = 0; j < COLUNAS; ++j) {
-            mapa[i][j] = CHAO;
+// Cria chao e bordas do mapa
+void inicializarMapa(int mapa[LINHAS][COLUNAS]) {
+    // Preencher o mapa com paredes
+    for (int i = 0; i < LINHAS; i++) {
+        for (int j = 0; j < COLUNAS; j++) {
+            // Colocar paredes nas bordas
+            if (i == 0 || i == LINHAS - 1 || j == 0 || j == COLUNAS - 1) {
+                mapa[i][j] = PAREDE;
+            } else {
+                mapa[i][j] = CHAO;
+            }
         }
     }
 }
