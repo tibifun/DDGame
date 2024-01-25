@@ -4,6 +4,24 @@
 #include <pthread.h>
 #include <unistd.h>
 
+//matriz do mapa
+#define LINHAS 5
+#define COLUNAS 5
+//Elementos do mapa
+#define PAREDE 1
+#define CHAO 0
+
+#define BAIXO -1
+#define CIMA -2
+
+#define ITEM 2
+#define TESOURO 3
+
+#define MONSTRO 4
+#define JOGADOR 5
+
+
+
 // Definição das estruturas
 typedef struct {
     char nome[50];
@@ -33,6 +51,53 @@ typedef struct {
     Sala *localAventura;
     int numMonstros;
 } ThreadArgs;
+
+void imprimirMapa(int mapa[LINHAS][COLUNAS]){
+    for (int i = 0; i < LINHAS; ++i){
+        for (int j = 0; j < COLUNAS; ++j) {
+            switch (mapa[i][j])
+            {
+                case PAREDE:
+                    printf("#");
+                    break;
+                case CHAO:
+                    printf(".");
+                    break;
+                case BAIXO:
+                    printf("D");
+                    break;
+                case CIMA:
+                    printf("S");
+                    break;
+                case TESOURO:
+                    printf("$");
+                case ITEM:
+                    printf("I");
+                    break;
+                case MONSTRO:
+                    printf("M");
+                    break;
+                case JOGADOR:
+                    printf("P");
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        printf("\n");
+    }
+}
+
+void inicializarMapa(int mapa[LINHAS][COLUNAS]){
+    for (int i = 0; i < LINHAS; ++i) {
+        for (int j = 0; j < COLUNAS; ++j) {
+            mapa[i][j] = CHAO;
+        }
+    }
+}
+
+void adicionarElementosMapa(int mapa[LINHAS][COLUNAS], int linha, int coluna, int elemento){mapa[linha][coluna] = elemento;}
 
 // Funções para inicialização
 void inicializarJogador(Jogador *jogador) {
@@ -178,7 +243,7 @@ void *threadFunc(void *args) {
 
             todosMonstrosMortos = 0;  // Pelo menos um monstro está vivo
 
-            aceitarComando(jogador, localAventura);  // solicitado apenas se o jogador estiver vivo
+            aceitarComando(jogador, localAventura);  // Mova o comando aqui para ser solicitado apenas se o jogador estiver vivo
 
             if (jogador->local == monstros[i].local) {
                 lutar(jogador, &monstros[i]);
@@ -203,8 +268,28 @@ void *threadFunc(void *args) {
 
 
 int main() {
+
+    int mapa[LINHAS][COLUNAS]={
+            {PAREDE,PAREDE,PAREDE,PAREDE,PAREDE},
+            {PAREDE, CHAO, CHAO, CHAO,PAREDE},
+            {PAREDE, CHAO, CHAO, CHAO, PAREDE },
+            {PAREDE, CHAO, CHAO, BAIXO, PAREDE},
+            {PAREDE, PAREDE, PAREDE, PAREDE, PAREDE}
+
+    };
+
+    inicializarMapa(mapa);
+
+    adicionarElementosMapa(mapa, 1,1,JOGADOR);
+    adicionarElementosMapa(mapa, 2, 2, TESOURO);
+    adicionarElementosMapa(mapa, 3, 2, ITEM);
+    adicionarElementosMapa(mapa, 2,3, MONSTRO);
+    adicionarElementosMapa(mapa,3,1,MONSTRO);
+    imprimirMapa(mapa);
+
+
     pthread_t playerThread, monsterThread;
-    const int numMonstros = 3;
+    const int numMonstros = 2;
     const int numSalas = 10;
     Jogador jogador;
     Monstro monstros[numMonstros];
