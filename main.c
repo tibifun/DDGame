@@ -153,7 +153,7 @@ void lutar(Jogador *jogador, Monstro *monstro) {
 
     // Lógica de luta aqui, por exemplo, subtrair energia dos dois participantes
     jogador->energia -= 10;
-    monstro->energia -= 10;
+    monstro->energia -= 50;
 
     descreverMonstro(*monstro);
 }
@@ -167,7 +167,8 @@ void *threadFunc(void *args) {
 
     while (jogador->energia > 0) {
         descreverLocalizacao(*jogador, localAventura);
-        aceitarComando(jogador, localAventura);
+
+        int todosMonstrosMortos = 1;
 
         for (int i = 0; i < numMonstros; ++i) {
             // Se o monstro morrer, continue para o próximo
@@ -175,19 +176,31 @@ void *threadFunc(void *args) {
                 continue;
             }
 
+            todosMonstrosMortos = 0;  // Pelo menos um monstro está vivo
+
+            aceitarComando(jogador, localAventura);  // solicitado apenas se o jogador estiver vivo
+
             if (jogador->local == monstros[i].local) {
                 lutar(jogador, &monstros[i]);
             }
 
             // Após a luta, verifique novamente se o jogador morreu
             if (jogador->energia <= 0) {
-                pthread_exit(NULL);
+                break;
             }
+        }
+
+        // Se todos os monstros estiverem mortos, sair do loop
+        if (todosMonstrosMortos) {
+            break;
         }
     }
 
     return NULL;
 }
+
+
+
 
 int main() {
     pthread_t playerThread, monsterThread;
