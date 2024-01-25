@@ -26,9 +26,12 @@
 typedef struct {
     char nome[50];
     int energia;
+    int basedamage;
+    int damage;
     int local;
     int objeto;
     int tesouro;
+    int chanceCrit;
 } Jogador;
 
 typedef struct {
@@ -110,6 +113,8 @@ void inicializarJogador(Jogador *jogador) {
     printf("Digite o nome do jogador: ");
     scanf("%s", jogador->nome);
     jogador->energia = 100;
+    jogador -> basedamage = 20;
+    jogador->chanceCrit = 10;
     jogador->local = 0;
     jogador->objeto = -1;
     jogador->tesouro = -1;
@@ -222,11 +227,59 @@ void aceitarComando(Jogador *jogador, Sala *localAventura) {
 void lutar(Jogador *jogador, Monstro *monstro) {
     printf("Luta! %s vs Monstro %d\n", jogador->nome, monstro->id);
 
-    // Lógica de luta aqui, por exemplo, subtrair energia dos dois participantes
+    int isCritical = rand() % 100 < jogador->chanceCrit;
+
+    int damage;
+    damage = isCritical ? jogador->damage * 2 : jogador->damage;  // Double damage on critical hit
+
     jogador->energia -= 10;
-    monstro->energia -= 50;
+    printf("O player %s acertou o monstro por %d", jogador->nome, damage);
+    monstro->energia -= damage;
+
+    if (isCritical) {
+        printf(" - Critical Hit!\n");
+    } else {
+        printf("\n");
+    }
+
 
     descreverMonstro(*monstro);
+}
+void aplicarPowerUp(Jogador *jogador, int mapa[LINHAS][COLUNAS]) {
+    int linha = -1, coluna = -1;
+
+    // Encontrar a posição do jogador no mapa
+    for (int i = 0; i < LINHAS; ++i) {
+        for (int j = 0; j < COLUNAS; ++j) {
+            if (mapa[i][j] == JOGADOR) {
+                linha = i;
+                coluna = j;
+                break;
+            }
+        }
+        if (linha != -1 && coluna != -1) {
+            break;
+        }
+    }
+
+    // Verificar se há um ‘item’ na mesma posição do jogador
+    if (mapa[linha][coluna] == ITEM) {
+        printf("%s encontrou um item e recebeu um power-up de critico!\n", jogador->nome);
+        // Lógica para aplicar o power-up ao jogador (aumentar energia, por exemplo)
+        jogador->chanceCrit += 10;
+
+        // Remover o ‘item’ do mapa
+        mapa[linha][coluna] = CHAO;
+    }
+
+    if (mapa[linha][coluna] == TESOURO) {
+        printf("%s encontrou um tesouro e recebeu um power-up de dano!\n", jogador->nome);
+        // Lógica para aplicar o power-up ao jogador (aumentar energia, por exemplo)
+        jogador->damage = jogador ->basedamage + 40;
+
+        // Remover o ‘item’ do mapa
+        mapa[linha][coluna] = CHAO;
+    }
 }
 
 void *threadFunc(void *args) {
@@ -238,7 +291,9 @@ void *threadFunc(void *args) {
 
     while (jogador->energia > 0) {
         descreverLocalizacao(*jogador, localAventura);
+        aceitarComando(jogador, localAventura);
 
+        aplicarPowerUp(jogador,localAventura);
         int todosMonstrosMortos = 1;
 
         for (int i = 0; i < numMonstros; ++i) {
